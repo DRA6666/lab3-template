@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
-variant=${1:-${VARIANT}}
-service=${2:-${SERVICE_NAME}}
-port=${3:-${PORT_NUMBER}}
+variant=${1:-${VARIANT:-v4}}
+service=${2:-${SERVICE_NAME:-rating}}
+port=${3:-${PORT_NUMBER:-8050}}
 
 path=$(dirname "$0")
+environment=$(mktemp)
+cp "$variant/postman/environment.json" "$environment"
 
 timed() {
   end=$(date +%s)
@@ -25,8 +27,8 @@ success() {
   newman run \
     --delay-request=100 \
     --folder=success \
-    --export-environment "$variant"/postman/environment.json \
-    --environment "$variant"/postman/environment.json \
+    --export-environment "$environment" \
+    --environment "$environment" \
     "$variant"/postman/collection.json
 }
 
@@ -38,21 +40,21 @@ step() {
 
   docker compose "$operation" "$service"
   if [[ "$operation" == "start" ]]; then
-    "$path"/wait-for.sh -t 120 "http://localhost:$port/manage/health" -- echo "Host localhost:$port is active"
+    bash "$path"/wait-for.sh -t 120 "http://localhost:$port/manage/health" -- echo "Host localhost:$port is active"
   fi
 
   newman run \
     --delay-request=100 \
     --folder=step"$step" \
-    --export-environment "$variant"/postman/environment.json \
-    --environment "$variant"/postman/environment.json \
+    --export-environment "$environment" \
+    --environment "$environment" \
     "$variant"/postman/collection.json
 
   printf "=== Step %d completed ===\n" "$step"
 }
 
 start=$(date +%s)
-trap 'timed $start' EXIT
+trap 'rm -f "$environment"; timed $start' EXIT
 
 printf "=== Start test scenario ===\n"
 

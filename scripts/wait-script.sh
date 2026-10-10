@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-IFS="," read -ra PORTS <<<"$WAIT_PORTS"
+IFS="," read -ra PORTS <<<"${WAIT_PORTS:-8080,8070,8060,8050}"
 path=$(dirname "$0")
 
 PIDs=()
 for port in "${PORTS[@]}"; do
-  "$path"/wait-for.sh -t 120 "http://localhost:$port/manage/health" -- echo "Host localhost:$port is active" &
+  bash "$path"/wait-for.sh -t 120 "http://localhost:$port/manage/health" -- echo "Host localhost:$port is active" &
   PIDs+=($!)
 done
 
